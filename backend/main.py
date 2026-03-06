@@ -237,3 +237,9 @@ def list_checks(_user: str = Depends(get_current_user)):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/version")
+def version():
+    """Debug: confirms which build is running on Render"""
+    return {"version": "custom-cors-v3", "allowed_origins": list(ALLOWED_ORIGINS)}
