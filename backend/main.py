@@ -24,9 +24,16 @@ app = FastAPI(title="Security Check API", version="1.0.0")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Support multiple origins via comma-separated ALLOWED_ORIGINS env var
+# e.g. ALLOWED_ORIGINS=https://check-object-demo.vercel.app,http://localhost:5173
+_extra = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in _extra.split(",") if o.strip()]
+if FRONTEND_URL not in allowed_origins:
+    allowed_origins.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "https://*.vercel.app"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
