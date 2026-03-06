@@ -15,7 +15,7 @@ from typing import Optional
 import math
 
 from auth import get_current_user
-from database import init_db, save_check, get_last_checks
+from database import init_db, save_check, get_last_checks, get_check_by_id, update_check
 
 # ---------------------------------------------------------------------------
 # App bootstrap
@@ -219,19 +219,48 @@ def calculate_total(p: CheckPayload) -> tuple[float, str, dict]:
 @app.post("/api/checks")
 def submit_check(payload: CheckPayload, _user: str = Depends(get_current_user)):
     total, grade, details = calculate_total(payload)
-    check_id = save_check(payload.store_name, total, grade, details)
+    payload_dict = payload.model_dump()
+    check_id = save_check(payload.store_name, total, grade, details, payload_dict)
     return {
         "id": check_id,
         "store_name": payload.store_name,
         "total_score": total,
         "grade": grade,
         "details": details,
+        "payload": payload_dict,
     }
 
 
 @app.get("/api/checks")
 def list_checks(_user: str = Depends(get_current_user)):
     return get_last_checks(50)
+
+
+@app.get("/api/checks/{check_id}")
+def get_check(check_id: int, _user: str = Depends(get_current_user)):
+    from fastapi import HTTPException
+    item = get_check_by_id(check_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Check not found")
+    return item
+
+
+@app.put("/api/checks/{check_id}")
+def edit_check(check_id: int, payload: CheckPayload, _user: str = Depends(get_current_user)):
+    from fastapi import HTTPException
+    total, grade, details = calculate_total(payload)
+    payload_dict = payload.model_dump()
+    updated = update_check(check_id, payload.store_name, total, grade, details, payload_dict)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Check not found")
+    return {
+        "id": check_id,
+        "store_name": payload.store_name,
+        "total_score": total,
+        "grade": grade,
+        "details": details,
+        "payload": payload_dict,
+    }
 
 
 @app.get("/health")
@@ -242,4 +271,4 @@ def health():
 @app.get("/version")
 def version():
     """Debug: confirms which build is running on Render"""
-    return {"version": "custom-cors-v3", "allowed_origins": list(ALLOWED_ORIGINS)}
+    return {"version": "history-edit-v4", "allowed_origins": list(ALLOWED_ORIGINS)}

@@ -10,6 +10,8 @@ export default function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [checks, setChecks] = useState([]);
   const [activeTab, setActiveTab] = useState('form');
+  // Edit mode state
+  const [editCheck, setEditCheck] = useState(null); // { id, payload, ... }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -41,6 +43,16 @@ export default function App() {
   function handleResult() {
     refreshHistory();
     setActiveTab('history');
+    setEditCheck(null);
+  }
+
+  function handleEdit(check) {
+    setEditCheck(check);
+    setActiveTab('form');
+  }
+
+  function handleCancelEdit() {
+    setEditCheck(null);
   }
 
   if (!creds) {
@@ -102,9 +114,9 @@ export default function App() {
       <nav className="tabs">
         <button
           className={`tab ${activeTab === 'form' ? 'active' : ''}`}
-          onClick={() => setActiveTab('form')}
+          onClick={() => { setActiveTab('form'); setEditCheck(null); }}
         >
-          📝 Новая проверка
+          {editCheck ? '✏️ Редактирование' : '📝 Новая проверка'}
         </button>
         <button
           className={`tab ${activeTab === 'history' ? 'active' : ''}`}
@@ -117,10 +129,16 @@ export default function App() {
       {/* Content */}
       <main className="main-content">
         {activeTab === 'form' && (
-          <CheckForm creds={creds} onResult={handleResult} />
+          <CheckForm
+            creds={creds}
+            onResult={handleResult}
+            initialData={editCheck?.payload}
+            editCheckId={editCheck?.id}
+            onCancelEdit={handleCancelEdit}
+          />
         )}
         {activeTab === 'history' && (
-          <CheckHistory checks={checks} />
+          <CheckHistory checks={checks} onEdit={handleEdit} />
         )}
       </main>
     </div>

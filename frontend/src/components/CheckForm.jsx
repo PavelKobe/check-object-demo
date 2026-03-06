@@ -1,56 +1,10 @@
-import { useState } from 'react';
-import { submitCheck } from '../api';
+import { useState, useEffect } from 'react';
+import { submitCheck, updateCheck } from '../api';
 import ScoreResult from './ScoreResult';
-
-// ─── Static checklist data ────────────────────────────────────────────────
-const BLOCK1_ITEMS = [
-    { key: 'b1_1', label: 'Инструктаж сотрудников ЧОП за 15–20 мин до открытия', weight: 15 },
-    { key: 'b1_2', label: 'Осмотр уходящего персонала при выходе', weight: 15 },
-    { key: 'b1_3', label: 'Досмотр мусора с участием ЧОП', weight: 15 },
-    { key: 'b1_4', label: 'Антикражные рамки исправны, проверяются при открытии', weight: 10 },
-    { key: 'b1_5', label: 'Эвакуационные выходы ничем не заставлены', weight: 15 },
-    { key: 'b1_6', label: 'Соблюдены правила снятия магазина с охраны', weight: 10 },
-    { key: 'b1_7', label: 'Соблюдены правила постановки магазина на охрану', weight: 10 },
-    { key: 'b1_8', label: 'В серверной отсутствует мусор и посторонние предметы', weight: 10 },
-];
-
-const BLOCK3_ITEMS = [
-    { key: 'b3_1', label: 'Сотрудник ЧОП реагирует на сработку антикражных рамок', weight: 30 },
-    { key: 'b3_2', label: 'Входные группы открыты вовремя', weight: 15 },
-    { key: 'b3_3', label: 'Входные группы закрыты вовремя', weight: 15 },
-    { key: 'b3_4', label: 'Входные группы чистые (отсутствует мусор)', weight: 10 },
-    { key: 'b3_5', label: 'Сотрудник в зоне видимости камер, у антикражных рамок', weight: 30 },
-];
-
-const BLOCK4_ITEMS = [
-    { key: 'b4_1', label: 'Деньги отсутствуют вне денежного ящика', weight: '33.3' },
-    { key: 'b4_2', label: 'Денежный ящик визуально закрыт', weight: '33.3' },
-    { key: 'b4_3', label: 'Алармосъемник закрыт на неработающей кассе', weight: '33.3' },
-];
-
-const BLOCK5_ITEMS = [
-    { key: 'b5_1', label: 'Дверь в помещение инкассы закрыта (СКУД)', weight: '33.3' },
-    { key: 'b5_2', label: 'Сейф в инкассе закрыт в отсутствие сотрудников', weight: '33.3' },
-    { key: 'b5_3', label: 'Денежный ящик отсутствует на столе кассира', weight: '33.3' },
-];
-
-const BLOCK7_ITEMS = [
-    { key: 'b7_1', label: 'Внешний вид соответствует договору (костюм, обувь, рубашка)', weight: 25 },
-    { key: 'b7_2', label: 'Одежда аккуратная: подходит по размеру, не мятая', weight: 20 },
-    { key: 'b7_3', label: 'Отсутствие татуировок и пирсинга на видимых частях тела', weight: 10 },
-    { key: 'b7_4', label: 'Наличие нагрудного бейджа', weight: 10 },
-    { key: 'b7_5', label: 'Наличие беспроводной гарнитуры', weight: 10 },
-    { key: 'b7_6', label: 'Сотрудник не отвлекается на телефон/гаджет на посту', weight: 25 },
-];
-
-const BLOCK8_ITEMS = [
-    { key: 'b8_1', label: 'Оператор ВН ЧОП находится на рабочем месте', weight: 25 },
-    { key: 'b8_2', label: 'Сотрудник реагирует на сработку СРЛ', weight: 15 },
-    { key: 'b8_3', label: 'В помещении мониторной отсутствуют посторонние лица', weight: 20 },
-    { key: 'b8_4', label: 'Оператор не отвлекается от выполнения должностных инструкций', weight: 20 },
-    { key: 'b8_5', label: 'Нет приема пищи в мониторной (допускаются напитки)', weight: 10 },
-    { key: 'b8_6', label: 'В мониторной порядок, отсутствует еда и товар', weight: 10 },
-];
+import {
+    BLOCK1_ITEMS, BLOCK3_ITEMS, BLOCK4_ITEMS,
+    BLOCK5_ITEMS, BLOCK7_ITEMS, BLOCK8_ITEMS,
+} from './checklistData';
 
 // ─── Subcomponents ────────────────────────────────────────────────────────
 function CheckItem({ item, value, onChange }) {
@@ -81,16 +35,54 @@ function BlockSection({ num, title, blockWeight, children }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────
-export default function CheckForm({ creds, onResult }) {
-    const [storeName, setStoreName] = useState('');
-    const [checks, setChecks] = useState({});
-    const [b2TotalStaff, setB2TotalStaff] = useState(5);
-    const [b2AbsentPosts, setB2AbsentPosts] = useState(0);
-    const [b6TotalDoors, setB6TotalDoors] = useState(3);
-    const [b6ClosedDoors, setB6ClosedDoors] = useState({});
+// Props:
+//   creds        — { username, password }
+//   onResult     — called with result after submit/update
+//   initialData  — pre-fill from a saved check's payload (edit mode)
+//   editCheckId  — ID of check being edited (edit mode)
+//   onCancelEdit — called when user cancels edit
+export default function CheckForm({ creds, onResult, initialData, editCheckId, onCancelEdit }) {
+    const isEditMode = !!editCheckId;
+
+    function initChecks(data) {
+        if (!data) return {};
+        const keys = [...BLOCK1_ITEMS, ...BLOCK3_ITEMS, ...BLOCK4_ITEMS, ...BLOCK5_ITEMS, ...BLOCK7_ITEMS, ...BLOCK8_ITEMS]
+            .map(i => i.key);
+        const result = {};
+        keys.forEach(k => { if (data[k]) result[k] = true; });
+        return result;
+    }
+
+    function initDoors(data) {
+        if (!data || !data.b6_total_doors) return {};
+        // We only know total closed, not per-door state — pre-check first N doors
+        const closed = data.b6_closed_doors ?? 0;
+        const result = {};
+        for (let i = 0; i < closed; i++) result[i] = true;
+        return result;
+    }
+
+    const [storeName, setStoreName] = useState(initialData?.store_name || '');
+    const [checks, setChecks] = useState(() => initChecks(initialData));
+    const [b2TotalStaff, setB2TotalStaff] = useState(initialData?.b2_total_staff ?? 5);
+    const [b2AbsentPosts, setB2AbsentPosts] = useState(initialData?.b2_absent_posts ?? 0);
+    const [b6TotalDoors, setB6TotalDoors] = useState(initialData?.b6_total_doors ?? 3);
+    const [b6ClosedDoors, setB6ClosedDoors] = useState(() => initDoors(initialData));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState(null);
+
+    // Re-init if initialData changes (switching edits)
+    useEffect(() => {
+        setStoreName(initialData?.store_name || '');
+        setChecks(initChecks(initialData));
+        setB2TotalStaff(initialData?.b2_total_staff ?? 5);
+        setB2AbsentPosts(initialData?.b2_absent_posts ?? 0);
+        setB6TotalDoors(initialData?.b6_total_doors ?? 3);
+        setB6ClosedDoors(initDoors(initialData));
+        setResult(null);
+        setError('');
+    }, [editCheckId]);
 
     function toggle(key) {
         setChecks(prev => ({ ...prev, [key]: !prev[key] }));
@@ -115,7 +107,12 @@ export default function CheckForm({ creds, onResult }) {
                 b6_total_doors: Number(b6TotalDoors),
                 b6_closed_doors: closedCount,
             };
-            const res = await submitCheck(payload, creds.username, creds.password);
+            let res;
+            if (isEditMode) {
+                res = await updateCheck(editCheckId, payload, creds.username, creds.password);
+            } else {
+                res = await submitCheck(payload, creds.username, creds.password);
+            }
             setResult(res);
             onResult(res);
         } catch (err) {
@@ -132,10 +129,19 @@ export default function CheckForm({ creds, onResult }) {
     const allItems = [...BLOCK1_ITEMS, ...BLOCK3_ITEMS, ...BLOCK4_ITEMS,
     ...BLOCK5_ITEMS, ...BLOCK7_ITEMS, ...BLOCK8_ITEMS];
     const checkedCount = allItems.filter(i => checks[i.key]).length;
-    const totalItems = allItems.length + Number(b6TotalDoors);
 
     return (
         <form onSubmit={handleSubmit} className="check-form">
+            {/* Edit mode banner */}
+            {isEditMode && (
+                <div className="edit-banner">
+                    ✏️ Режим редактирования — проверка #{editCheckId}
+                    <button type="button" className="btn-cancel-edit" onClick={onCancelEdit}>
+                        ✕ Отмена
+                    </button>
+                </div>
+            )}
+
             {/* Store name */}
             <div className="store-field">
                 <label>🏪 Название магазина</label>
@@ -251,7 +257,9 @@ export default function CheckForm({ creds, onResult }) {
 
             {/* Submit */}
             <button type="submit" className="btn-submit" disabled={loading}>
-                {loading ? '⏳ Отправка...' : '🧮 Рассчитать и сохранить'}
+                {loading
+                    ? '⏳ Сохранение...'
+                    : isEditMode ? '💾 Сохранить изменения' : '🧮 Рассчитать и сохранить'}
             </button>
 
             {/* Result */}
