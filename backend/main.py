@@ -8,8 +8,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 import math
@@ -22,26 +22,34 @@ from database import init_db, save_check, get_last_checks
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Security Check API", version="1.0.0")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+ALLOWED_ORIGIN = os.getenv("FRONTEND_URL", "https://check-object-demo.vercel.app")
+ALLOWED_ORIGINS = {
+    "https://check-object-demo.vercel.app",
+    "http://localhost:5173",
+    ALLOWED_ORIGIN,
+}
 
-# Support multiple origins via comma-separated ALLOWED_ORIGINS env var
-_extra = os.getenv("ALLOWED_ORIGINS", "")
-allowed_origins = [o.strip() for o in _extra.split(",") if o.strip()]
-if FRONTEND_URL not in allowed_origins:
-    allowed_origins.append(FRONTEND_URL)
+class CORSMiddlewareCustom(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
 
-# Always allow the production Vercel domain
-_prod = "https://check-object-demo.vercel.app"
-if _prod not in allowed_origins:
-    allowed_origins.append(_prod)
+        # Respond to preflight immediately — no auth needed
+        if request.method == "OPTIONS":
+            resp = Response(status_code=200)
+            resp.headers["Access-Control-Allow-Origin"] = origin if origin in ALLOWED_ORIGINS else ""
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+            resp.headers["Access-Control-Max-Age"] = "600"
+            return resp
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+        response = await call_next(request)
+        if origin in ALLOWED_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
+app.add_middleware(CORSMiddlewareCustom)
 
 
 @app.on_event("startup")
