@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import CheckViewModal from './CheckViewModal';
-import { exportCheckToPdf } from '../utils/exportPdf';
+import { printCheckToPdf } from '../utils/printCheck';
 import { exportChecksToExcel } from '../utils/exportExcel';
 
 export default function CheckHistory({ checks, onEdit }) {
@@ -79,9 +79,9 @@ export default function CheckHistory({ checks, onEdit }) {
                                             >✏️</button>
                                             <button
                                                 className="btn-icon"
-                                                title="Экспорт в PDF"
-                                                onClick={() => exportCheckToPdf(c)}
-                                            >📄</button>
+                                                title="Печать / PDF (Ctrl+P → Сохранить как PDF)"
+                                                onClick={() => printCheckToPdf(c)}
+                                            >🖨</button>
                                         </td>
                                     </tr>
                                 );
