@@ -8,7 +8,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Depends, Request, Response
+from fastapi import FastAPI, Depends, Request, HTTPException
+from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -16,6 +17,8 @@ import math
 
 from auth import get_current_user
 from database import init_db, save_check, get_last_checks, get_check_by_id, update_check
+from export_pdf import generate_check_pdf
+from export_excel import generate_checks_excel
 
 # ---------------------------------------------------------------------------
 # App bootstrap
@@ -234,6 +237,40 @@ def submit_check(payload: CheckPayload, _user: str = Depends(get_current_user)):
 @app.get("/api/checks")
 def list_checks(_user: str = Depends(get_current_user)):
     return get_last_checks(50)
+
+
+@app.get("/api/checks/export/excel")
+def export_checks_excel(_user: str = Depends(get_current_user)):
+    """Export all checks to Excel file."""
+    checks = get_last_checks(50)
+    if not checks:
+        raise HTTPException(status_code=404, detail="No checks to export")
+    data = generate_checks_excel(checks)
+    from datetime import date
+    filename = f"checks-{date.today().isoformat()}.xlsx"
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/api/checks/{check_id}/pdf")
+def export_check_pdf(check_id: int, _user: str = Depends(get_current_user)):
+    """Export single check to PDF file."""
+    check = get_check_by_id(check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail="Check not found")
+    data = generate_check_pdf(check)
+    import re
+    safe_name = re.sub(r"[^\w\s-]", "", check.get("store_name", "check")).strip().replace(" ", "-") or "check"
+    safe_date = (check.get("timestamp") or "").replace("/", "-").replace(":", "-")[:16]
+    filename = f"check-{safe_name}-{safe_date}.pdf"
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/api/checks/{check_id}")
