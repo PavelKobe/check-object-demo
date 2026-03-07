@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import CheckForm from './components/CheckForm';
 import CheckHistory from './components/CheckHistory';
 import { fetchChecks } from './api';
+import logoStockmann from '../images/logo-stockmann.png';
 
 export default function App() {
   const [creds, setCreds] = useState(null);
@@ -98,7 +99,9 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <div className="header-left">
-          <span className="header-logo">🛡️</span>
+          <a href="#" className="header-logo-link">
+            <img src={logoStockmann} alt="Stockmann Logo" className="header-logo-image" />
+          </a>
           <div>
             <h1>Чек-лист безопасности</h1>
             <p>Оценка работы службы охраны универмага</p>

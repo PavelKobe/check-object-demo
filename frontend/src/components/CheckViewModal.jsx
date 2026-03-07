@@ -1,7 +1,7 @@
 /**
  * CheckViewModal.jsx — Read-only view of a full check record
  */
-import { BLOCK1_ITEMS, BLOCK3_ITEMS, BLOCK4_ITEMS, BLOCK5_ITEMS, BLOCK7_ITEMS, BLOCK8_ITEMS, BLOCK_META } from './checklistData';
+import { BLOCK1_ITEMS, BLOCK3_ITEMS, BLOCK4_ITEMS, BLOCK5_ITEMS, BLOCK7_ITEMS, BLOCK8_ITEMS } from './checklistData';
 
 const gradeClass = {
     'отлично': 'badge-green',
