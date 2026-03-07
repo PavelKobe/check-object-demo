@@ -3,6 +3,8 @@
  */
 import { useState } from 'react';
 import CheckViewModal from './CheckViewModal';
+import { exportCheckToPdf } from '../utils/exportPdf';
+import { exportChecksToExcel } from '../utils/exportExcel';
 
 export default function CheckHistory({ checks, onEdit }) {
     const [viewCheck, setViewCheck] = useState(null);
@@ -75,12 +77,22 @@ export default function CheckHistory({ checks, onEdit }) {
                                                 title="Редактировать"
                                                 onClick={() => onEdit && onEdit(c)}
                                             >✏️</button>
+                                            <button
+                                                className="btn-icon"
+                                                title="Экспорт в PDF"
+                                                onClick={() => exportCheckToPdf(c)}
+                                            >📄</button>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                     </table>
+                </div>
+                <div className="history-export">
+                    <button className="btn-export-excel" onClick={() => exportChecksToExcel(checks)}>
+                        📊 Экспорт в Excel
+                    </button>
                 </div>
             </div>
 

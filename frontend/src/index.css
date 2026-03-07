@@ -723,6 +723,29 @@ body {
   border-color: var(--yellow);
 }
 
+/* ─── History export ──────────────────────────────────────────────────── */
+.history-export {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-export-excel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .5rem 1rem;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--text);
+}
+
+.btn-export-excel:hover {
+  background: rgba(34, 197, 94, .15);
+  border-color: #22c55e;
+}
+
 /* ─── Edit mode banner ───────────────────────────────────────────────── */
 .edit-banner {
   display: flex;
