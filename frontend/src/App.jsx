@@ -3,6 +3,7 @@ import CheckForm from './components/CheckForm';
 import CheckHistory from './components/CheckHistory';
 import { fetchChecks } from './api';
 import logoStockmann from '../images/logo-stockmann.png';
+import kameraImg from '../images/камера.png';
 
 export default function App() {
   const [creds, setCreds] = useState(null);
@@ -102,6 +103,7 @@ export default function App() {
           <a href="#" className="header-logo-link">
             <img src={logoStockmann} alt="Stockmann Logo" className="header-logo-image" />
           </a>
+          <img src={kameraImg} alt="" className="header-camera-icon" />
           <div>
             <h1>Чек-лист безопасности</h1>
             <p>Оценка работы службы охраны универмага</p>
