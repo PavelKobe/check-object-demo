@@ -2,7 +2,7 @@
  * exportPdf.js — export single check to PDF
  */
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import { autoTable } from 'jspdf-autotable';
 import {
     BLOCK1_ITEMS,
     BLOCK3_ITEMS,
@@ -22,7 +22,7 @@ const BLOCK_DEFS = [
 ];
 
 function addBlockTable(doc, tableOpts, head, body, columnStyles) {
-    doc.autoTable({
+    autoTable(doc, {
         ...tableOpts,
         head: [head],
         body,
