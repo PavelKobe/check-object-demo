@@ -300,6 +300,22 @@ body {
   border-color: var(--accent);
 }
 
+.store-select {
+  cursor: pointer;
+  appearance: auto;
+}
+
+.store-input-other {
+  margin-top: 0.6rem;
+}
+
+.store-chop-badge {
+  margin-top: 0.5rem;
+  color: #22c55e;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
 .form-progress {
   margin-bottom: 1.75rem;
 }

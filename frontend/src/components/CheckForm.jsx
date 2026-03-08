@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { submitCheck, updateCheck } from '../api';
 import ScoreResult from './ScoreResult';
+import { STORES_DATA } from '../data/storesData';
 import {
     BLOCK1_ITEMS, BLOCK3_ITEMS, BLOCK4_ITEMS,
     BLOCK5_ITEMS, BLOCK7_ITEMS, BLOCK8_ITEMS,
 } from './checklistData';
+
+const OTHER_OPTION = '__other__';
 
 // ─── Subcomponents ────────────────────────────────────────────────────────
 function CheckItem({ item, value, onChange }) {
@@ -62,9 +65,16 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         return result;
     }
 
+    const storeFromInitial = initialData && STORES_DATA.find(s => s.storeName === initialData.store_name);
     const [storeName, setStoreName] = useState(initialData?.store_name || '');
+    const [chopName, setChopName] = useState(storeFromInitial?.chopName || '');
+    const [isOtherStore, setIsOtherStore] = useState(
+        !!(initialData?.store_name && !STORES_DATA.some(s => s.storeName === initialData.store_name))
+    );
     const [checks, setChecks] = useState(() => initChecks(initialData));
-    const [b2TotalStaff, setB2TotalStaff] = useState(initialData?.b2_total_staff ?? 5);
+    const [b2TotalStaff, setB2TotalStaff] = useState(
+        initialData?.b2_total_staff ?? storeFromInitial?.staffCount ?? 5
+    );
     const [b2AbsentPosts, setB2AbsentPosts] = useState(initialData?.b2_absent_posts ?? 0);
     const [b6TotalDoors, setB6TotalDoors] = useState(initialData?.b6_total_doors ?? 3);
     const [b6ClosedDoors, setB6ClosedDoors] = useState(() => initDoors(initialData));
@@ -74,9 +84,12 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
 
     // Re-init if initialData changes (switching edits)
     useEffect(() => {
+        const store = initialData?.store_name && STORES_DATA.find(s => s.storeName === initialData.store_name);
         setStoreName(initialData?.store_name || '');
+        setChopName(store?.chopName || '');
+        setIsOtherStore(!!(initialData?.store_name && !STORES_DATA.some(s => s.storeName === initialData.store_name)));
         setChecks(initChecks(initialData));
-        setB2TotalStaff(initialData?.b2_total_staff ?? 5);
+        setB2TotalStaff(initialData?.b2_total_staff ?? store?.staffCount ?? 5);
         setB2AbsentPosts(initialData?.b2_absent_posts ?? 0);
         setB6TotalDoors(initialData?.b6_total_doors ?? 3);
         setB6ClosedDoors(initDoors(initialData));
@@ -145,13 +158,48 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
             {/* Store name */}
             <div className="store-field">
                 <label>🏪 Название магазина</label>
-                <input
-                    type="text"
-                    value={storeName}
-                    onChange={e => setStoreName(e.target.value)}
-                    placeholder="Введите название объекта..."
-                    className="store-input"
-                />
+                <select
+                    value={
+                        STORES_DATA.some(s => s.storeName === storeName)
+                            ? storeName
+                            : isOtherStore ? OTHER_OPTION : ''
+                    }
+                    onChange={e => {
+                        const val = e.target.value;
+                        if (val === OTHER_OPTION) {
+                            setIsOtherStore(true);
+                            setStoreName('');
+                            setChopName('');
+                        } else if (val) {
+                            setIsOtherStore(false);
+                            const store = STORES_DATA.find(s => s.storeName === val);
+                            if (store) {
+                                setStoreName(store.storeName);
+                                setB2TotalStaff(store.staffCount);
+                                setChopName(store.chopName);
+                            }
+                        }
+                    }}
+                    className="store-input store-select"
+                >
+                    <option value="">— Выберите магазин —</option>
+                    {STORES_DATA.map(s => (
+                        <option key={s.storeName} value={s.storeName}>{s.storeName}</option>
+                    ))}
+                    <option value={OTHER_OPTION}>Другое</option>
+                </select>
+                {isOtherStore && (
+                    <input
+                        type="text"
+                        value={storeName}
+                        onChange={e => setStoreName(e.target.value)}
+                        placeholder="Введите название объекта..."
+                        className="store-input store-input-other"
+                    />
+                )}
+                {chopName && (
+                    <div className="store-chop-badge">{chopName}</div>
+                )}
             </div>
 
             {/* Progress */}
