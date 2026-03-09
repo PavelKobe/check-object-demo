@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { submitCheck, updateCheck } from '../api';
 import ScoreResult from './ScoreResult';
+import CommentModal from './CommentModal';
 import { STORES_DATA } from '../data/storesData';
 import {
     BLOCK1_ITEMS, BLOCK3_ITEMS, BLOCK4_ITEMS,
@@ -9,18 +10,43 @@ import {
 
 const OTHER_OPTION = '__other__';
 
+/** Формат: dd-mm-yyyy: hh:mm */
+function formatDatetimeLocalToDisplay(val) {
+    if (!val || !val.includes('T')) return val || '';
+    const [d, t] = val.split('T');
+    const [y, m, day] = d.split('-');
+    const [h, min] = (t || '00:00').split(':');
+    return `${day}-${m}-${y}: ${h}:${min}`;
+}
+function formatDisplayToDatetimeLocal(val) {
+    const m = (val || '').match(/(\d{2})-(\d{2})-(\d{4}):\s*(\d{2}):(\d{2})/);
+    if (!m) return '';
+    return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}`;
+}
+
 // ─── Subcomponents ────────────────────────────────────────────────────────
-function CheckItem({ item, value, onChange }) {
+function CheckItem({ item, value, onChange, comment, onCommentClick }) {
     return (
-        <label className={`check-item ${value ? 'checked' : ''}`}>
-            <input
-                type="checkbox"
-                checked={value}
-                onChange={() => onChange(item.key)}
-            />
-            <span className="check-label">{item.label}</span>
-            <span className="check-weight">{item.weight}%</span>
-        </label>
+        <div className={`check-item ${value ? 'checked' : ''}`} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 auto', minWidth: 0 }}>
+                <input
+                    type="checkbox"
+                    checked={value}
+                    onChange={() => onChange(item.key)}
+                />
+                <span className="check-label">{item.label}</span>
+                <span className="check-weight">{item.weight}%</span>
+            </label>
+            <span
+                className={`comment-trigger ${comment ? 'has-comment' : ''}`}
+                onClick={() => onCommentClick(item.key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && onCommentClick(item.key)}
+            >
+                {comment ? 'Комментарий' : 'Добавить комментарий'}
+            </span>
+        </div>
     );
 }
 
@@ -72,10 +98,25 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         !!(initialData?.store_name && !STORES_DATA.some(s => s.storeName === initialData.store_name))
     );
     const [checks, setChecks] = useState(() => initChecks(initialData));
+    const [comments, setComments] = useState(() => initialData?.comments ?? {});
+    const [commentModalKey, setCommentModalKey] = useState(null);
     const [b2TotalStaff, setB2TotalStaff] = useState(
         initialData?.b2_total_staff ?? storeFromInitial?.staffCount ?? 5
     );
     const [b2AbsentPosts, setB2AbsentPosts] = useState(initialData?.b2_absent_posts ?? 0);
+    const [b2Checks, setB2Checks] = useState(() => {
+        const raw = initialData?.b2_checks;
+        if (Array.isArray(raw) && raw.length > 0) return raw.map(c => ({
+            datetime: c.datetime || '',
+            absent_posts: typeof c.absent_posts === 'number' ? c.absent_posts : 0
+        }));
+        return [{
+            datetime: '',
+            absent_posts: initialData?.b2_absent_posts ?? 0
+        }];
+    });
+    const [b2NewDatetime, setB2NewDatetime] = useState('');
+    const [b2NewAbsent, setB2NewAbsent] = useState(0);
     const [b6TotalDoors, setB6TotalDoors] = useState(initialData?.b6_total_doors ?? 3);
     const [b6ClosedDoors, setB6ClosedDoors] = useState(() => initDoors(initialData));
     const [loading, setLoading] = useState(false);
@@ -89,8 +130,18 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         setChopName(store?.chopName || '');
         setIsOtherStore(!!(initialData?.store_name && !STORES_DATA.some(s => s.storeName === initialData.store_name)));
         setChecks(initChecks(initialData));
+        setComments(initialData?.comments ?? {});
         setB2TotalStaff(initialData?.b2_total_staff ?? store?.staffCount ?? 5);
         setB2AbsentPosts(initialData?.b2_absent_posts ?? 0);
+        const raw = initialData?.b2_checks;
+        if (Array.isArray(raw) && raw.length > 0) {
+            setB2Checks(raw.map(c => ({
+                datetime: c.datetime || '',
+                absent_posts: typeof c.absent_posts === 'number' ? c.absent_posts : 0
+            })));
+        } else {
+            setB2Checks([{ datetime: '', absent_posts: initialData?.b2_absent_posts ?? 0 }]);
+        }
         setB6TotalDoors(initialData?.b6_total_doors ?? 3);
         setB6ClosedDoors(initDoors(initialData));
         setResult(null);
@@ -105,6 +156,19 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         setB6ClosedDoors(prev => ({ ...prev, [i]: !prev[i] }));
     }
 
+    function handleCommentSave(key, text) {
+        setComments(prev => {
+            const next = { ...prev };
+            if (text) next[key] = text; else delete next[key];
+            return next;
+        });
+        setCommentModalKey(null);
+    }
+
+    const allItems = [...BLOCK1_ITEMS, ...BLOCK3_ITEMS, ...BLOCK4_ITEMS,
+        ...BLOCK5_ITEMS, ...BLOCK7_ITEMS, ...BLOCK8_ITEMS];
+    const commentModalItem = commentModalKey && allItems.find(i => i.key === commentModalKey);
+
     async function handleSubmit(e) {
         e.preventDefault();
         if (!storeName.trim()) { setError('Укажите название магазина'); return; }
@@ -112,11 +176,16 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         setLoading(true);
         try {
             const closedCount = Object.values(b6ClosedDoors).filter(Boolean).length;
+            const effectiveB2 = b2Checks.length > 0 ? b2Checks : [
+                { datetime: b2NewDatetime || formatDatetimeLocalToDisplay(new Date().toISOString().slice(0, 16)), absent_posts: b2NewAbsent }
+            ];
             const payload = {
                 store_name: storeName.trim(),
                 ...checks,
+                comments: Object.keys(comments).length ? comments : {},
                 b2_total_staff: Number(b2TotalStaff),
-                b2_absent_posts: Number(b2AbsentPosts),
+                b2_absent_posts: effectiveB2[0]?.absent_posts ?? 0,
+                b2_checks: effectiveB2,
                 b6_total_doors: Number(b6TotalDoors),
                 b6_closed_doors: closedCount,
             };
@@ -139,8 +208,6 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
         }
     }
 
-    const allItems = [...BLOCK1_ITEMS, ...BLOCK3_ITEMS, ...BLOCK4_ITEMS,
-    ...BLOCK5_ITEMS, ...BLOCK7_ITEMS, ...BLOCK8_ITEMS];
     const checkedCount = allItems.filter(i => checks[i.key]).length;
 
     return (
@@ -210,10 +277,19 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
                 </div>
             </div>
 
+            <CommentModal
+                open={!!commentModalKey}
+                onClose={() => setCommentModalKey(null)}
+                itemLabel={commentModalItem?.label}
+                value={commentModalKey ? (comments[commentModalKey] || '') : ''}
+                onSave={t => commentModalKey && handleCommentSave(commentModalKey, t)}
+            />
+
             {/* Block 1 */}
             <BlockSection num={1} title="Общие критерии безопасности" blockWeight={15}>
                 {BLOCK1_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 
@@ -225,11 +301,33 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
                         <input type="number" min={1} max={50} value={b2TotalStaff}
                             onChange={e => setB2TotalStaff(e.target.value)} />
                     </label>
+                </div>
+                <div className="b2-checks-list">
+                    {b2Checks.map((c, i) => (
+                        <div key={i} className="b2-check-row">
+                            <span className="b2-check-datetime">{c.datetime || '—'}</span>
+                            <span className="b2-check-absent">{c.absent_posts} отсущ.</span>
+                            <button type="button" className="btn-remove-check" onClick={() => setB2Checks(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                        </div>
+                    ))}
+                </div>
+                <div className="b2-add-row">
+                    <input type="datetime-local" value={formatDisplayToDatetimeLocal(b2NewDatetime)}
+                        onChange={e => setB2NewDatetime(formatDatetimeLocalToDisplay(e.target.value))}
+                        className="b2-datetime-input" />
                     <label>
-                        ❌ Отсутствующих постов:
-                        <input type="number" min={0} max={b2TotalStaff} value={b2AbsentPosts}
-                            onChange={e => setB2AbsentPosts(e.target.value)} />
+                        Отсутствует:
+                        <input type="number" min={0} max={b2TotalStaff} value={b2NewAbsent}
+                            onChange={e => setB2NewAbsent(parseInt(e.target.value) || 0)} />
                     </label>
+                    <button type="button" className="btn-add-check" onClick={() => {
+                        const dt = b2NewDatetime || formatDatetimeLocalToDisplay(new Date().toISOString().slice(0, 16));
+                        setB2Checks(prev => [...prev, { datetime: dt, absent_posts: b2NewAbsent }]);
+                        setB2NewDatetime('');
+                        setB2NewAbsent(0);
+                    }}>
+                        Добавить еще проверку
+                    </button>
                 </div>
                 <div className="block-hint">
                     {Number(b2TotalStaff) <= 5
@@ -241,21 +339,24 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
             {/* Block 3 */}
             <BlockSection num={3} title="КПП (входные группы)" blockWeight={15}>
                 {BLOCK3_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 
             {/* Block 4 */}
             <BlockSection num={4} title="Кассы" blockWeight={10}>
                 {BLOCK4_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 
             {/* Block 5 */}
             <BlockSection num={5} title="Инкасса" blockWeight={10}>
                 {BLOCK5_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 
@@ -289,14 +390,16 @@ export default function CheckForm({ creds, onResult, initialData, editCheckId, o
             {/* Block 7 */}
             <BlockSection num={7} title="ЧОП — Внешний вид" blockWeight={15}>
                 {BLOCK7_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 
             {/* Block 8 */}
             <BlockSection num={8} title="Мониторка (комната оператора)" blockWeight={15}>
                 {BLOCK8_ITEMS.map(item => (
-                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle} />
+                    <CheckItem key={item.key} item={item} value={!!checks[item.key]} onChange={toggle}
+                        comment={comments[item.key]} onCommentClick={setCommentModalKey} />
                 ))}
             </BlockSection>
 

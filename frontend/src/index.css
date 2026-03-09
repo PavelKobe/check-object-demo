@@ -892,6 +892,166 @@ body {
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-secondary {
+  padding: 0.6rem 1.2rem;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.85rem 1rem;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.comment-trigger {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.comment-trigger:hover {
+  color: var(--accent);
+}
+
+.comment-trigger.has-comment {
+  color: var(--accent);
+}
+
+/* ─── Block 2 multi-checks ───────────────────────────────────────────── */
+.b2-checks-list {
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.b2-check-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg3);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.b2-check-datetime {
+  flex: 1;
+  color: var(--text);
+}
+
+.b2-check-absent {
+  color: var(--text-muted);
+}
+
+.btn-remove-check {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-remove-check:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.b2-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.b2-datetime-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.b2-add-row input[type="number"] {
+  width: 60px;
+  padding: 0.4rem;
+}
+
+.btn-add-check {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-add-check:hover {
+  opacity: 0.9;
+}
+
+.view-item-wrap {
+  margin-bottom: 0.25rem;
+}
+
+.view-comment {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-left: 2rem;
+  margin-top: 0.2rem;
+}
+
+.view-b2-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.view-b2-table th,
+.view-b2-table td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.view-b2-table th {
+  background: var(--bg3);
 }
 
 /* ─── View stats (read-only block 2 & 6) ────────────────────────────── */

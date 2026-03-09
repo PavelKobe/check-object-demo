@@ -96,6 +96,7 @@ def generate_check_pdf(check: dict) -> bytes:
 
     p = check.get("payload") or {}
     d = check.get("details") or {}
+    comments = p.get("comments") or {}
 
     # Header
     story.append(Paragraph(f"Чек-лист: {check.get('store_name', '')}", ParagraphStyle(name="Title", fontName="Helvetica-Bold", fontSize=16)))
@@ -106,29 +107,44 @@ def generate_check_pdf(check: dict) -> bytes:
 
     # Block 1
     b1_score = _score_str(d, 1)
-    b1_data = [["Статус", "Пункт", "Вес %"]]
-    b1_data.extend([[("✅" if p.get(k) else "☐"), label, str(w)] for k, label, w in BLOCK1_ITEMS])
+    b1_data = [["Статус", "Пункт", "Вес %", "Комментарий"]]
+    b1_data.extend([
+        [("✅" if p.get(k) else "☐"), label, str(w), (comments.get(k) or "")]
+        for k, label, w in BLOCK1_ITEMS
+    ])
     story.append(Paragraph(f"Блок 1: Общие критерии безопасности (балл: {b1_score})", ParagraphStyle(name="Block", fontName="Helvetica-Bold", fontSize=9)))
-    story.append(_make_table(b1_data, [15 * mm, 145 * mm, 20 * mm]))
+    story.append(_make_table(b1_data, [15 * mm, 100 * mm, 20 * mm, 50 * mm]))
     story.append(Spacer(1, 6 * mm))
 
-    # Block 2 — numeric
+    # Block 2 — numeric / multi-checks
     total_staff = p.get("b2_total_staff", "—")
-    absent = p.get("b2_absent_posts", "—")
-    fact = (total_staff - absent) if isinstance(total_staff, (int, float)) and isinstance(absent, (int, float)) else "—"
+    b2_checks = p.get("b2_checks") or []
     b2_score = _score_str(d, 2)
-    b2_data = [["По штату", str(total_staff), ""], ["Отсутствует постов", str(absent), ""], ["По факту", str(fact), ""]]
+    if b2_checks:
+        b2_data = [["По штату", str(total_staff), ""]]
+        b2_data.append(["Дата и время", "Отсутствует постов", "По факту"])
+        for c in b2_checks:
+            ap = c.get("absent_posts", 0) if isinstance(c, dict) else 0
+            fact = (total_staff - ap) if isinstance(total_staff, (int, float)) else "—"
+            b2_data.append([c.get("datetime", "—"), str(ap), str(fact)])
+    else:
+        absent = p.get("b2_absent_posts", "—")
+        fact = (total_staff - absent) if isinstance(total_staff, (int, float)) and isinstance(absent, (int, float)) else "—"
+        b2_data = [["По штату", str(total_staff), ""], ["Отсутствует постов", str(absent), ""], ["По факту", str(fact), ""]]
     story.append(Paragraph(f"Блок 2: % присутствия сотрудников ЧОП (балл: {b2_score})", ParagraphStyle(name="Block", fontName="Helvetica-Bold", fontSize=9)))
-    story.append(_make_table(b2_data, [50 * mm, 30 * mm, 100 * mm]))
+    story.append(_make_table(b2_data, [50 * mm, 30 * mm, 50 * mm]))
     story.append(Spacer(1, 6 * mm))
 
     # Blocks 3–5
     for block_num, title, items in BLOCK_DEFS[1:4]:
         score = _score_str(d, block_num)
-        data = [["Статус", "Пункт", "Вес %"]]
-        data.extend([[("✅" if p.get(k) else "☐"), label, str(w)] for k, label, w in items])
+        data = [["Статус", "Пункт", "Вес %", "Комментарий"]]
+        data.extend([
+            [("✅" if p.get(k) else "☐"), label, str(w), (comments.get(k) or "")]
+            for k, label, w in items
+        ])
         story.append(Paragraph(f"Блок {block_num}: {title} (балл: {score})", ParagraphStyle(name="Block", fontName="Helvetica-Bold", fontSize=9)))
-        story.append(_make_table(data, [15 * mm, 145 * mm, 20 * mm]))
+        story.append(_make_table(data, [15 * mm, 100 * mm, 20 * mm, 50 * mm]))
         story.append(Spacer(1, 6 * mm))
 
     # Block 6 — doors
@@ -143,10 +159,13 @@ def generate_check_pdf(check: dict) -> bytes:
     # Blocks 7–8
     for block_num, title, items in BLOCK_DEFS[4:]:
         score = _score_str(d, block_num)
-        data = [["Статус", "Пункт", "Вес %"]]
-        data.extend([[("✅" if p.get(k) else "☐"), label, str(w)] for k, label, w in items])
+        data = [["Статус", "Пункт", "Вес %", "Комментарий"]]
+        data.extend([
+            [("✅" if p.get(k) else "☐"), label, str(w), (comments.get(k) or "")]
+            for k, label, w in items
+        ])
         story.append(Paragraph(f"Блок {block_num}: {title} (балл: {score})", ParagraphStyle(name="Block", fontName="Helvetica-Bold", fontSize=9)))
-        story.append(_make_table(data, [15 * mm, 145 * mm, 20 * mm]))
+        story.append(_make_table(data, [15 * mm, 100 * mm, 20 * mm, 50 * mm]))
         story.append(Spacer(1, 6 * mm))
 
     doc.build(story)

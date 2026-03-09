@@ -30,11 +30,14 @@ function esc(s) {
         .replace(/"/g, '&quot;');
 }
 
-function blockRows(p, items) {
+function blockRows(p, items, comments = {}) {
     return items
         .map(
-            (item) =>
-                `<tr><td>${p[item.key] ? '✓' : '☐'}</td><td>${esc(item.label)}</td><td>${item.weight}%</td></tr>`
+            (item) => {
+                const com = comments[item.key];
+                const commentCell = com ? `<td class="comment-cell">${esc(com)}</td>` : '<td></td>';
+                return `<tr><td>${p[item.key] ? '✓' : '☐'}</td><td>${esc(item.label)}</td><td>${item.weight}%</td>${commentCell}</tr>`;
+            }
         )
         .join('');
 }
@@ -44,22 +47,40 @@ export function printCheckToPdf(check) {
 
     const p = check.payload || {};
     const d = check.details || {};
+    const comments = p.comments || {};
     const totalStaff = p.b2_total_staff ?? '—';
-    const absentPosts = p.b2_absent_posts ?? '—';
-    const factPosts =
-        typeof totalStaff === 'number' && typeof absentPosts === 'number'
-            ? totalStaff - absentPosts
-            : '—';
+    const b2Checks = Array.isArray(p.b2_checks) ? p.b2_checks : [];
 
-    const block2Html = `
+    const block2Html = (() => {
+        const score = d.block_2 != null ? d.block_2 + '%' : '—';
+        if (b2Checks.length > 0) {
+            const rows = b2Checks.map(c => {
+                const ap = typeof c.absent_posts === 'number' ? c.absent_posts : 0;
+                const fact = typeof totalStaff === 'number' ? totalStaff - ap : '—';
+                return `<tr><td>${esc(c.datetime || '—')}</td><td>${ap}</td><td>${fact}</td></tr>`;
+            }).join('');
+            return `
     <div class="block">
-      <div class="block-title">Блок 2: % присутствия сотрудников ЧОП (балл: ${d.block_2 != null ? d.block_2 + '%' : '—'})</div>
+      <div class="block-title">Блок 2: % присутствия сотрудников ЧОП (балл: ${score})</div>
+      <table class="block-table">
+        <tr><td>По штату</td><td>${esc(totalStaff)}</td><td></td></tr>
+        <tr><th>Дата и время</th><th>Отсутствует постов</th><th>По факту</th></tr>
+        ${rows}
+      </table>
+    </div>`;
+        }
+        const absentPosts = p.b2_absent_posts ?? '—';
+        const factPosts = typeof totalStaff === 'number' && typeof p.b2_absent_posts === 'number' ? totalStaff - p.b2_absent_posts : '—';
+        return `
+    <div class="block">
+      <div class="block-title">Блок 2: % присутствия сотрудников ЧОП (балл: ${score})</div>
       <table class="block-table"><tbody>
         <tr><td>По штату</td><td>${esc(totalStaff)}</td><td></td></tr>
         <tr><td>Отсутствует постов</td><td>${esc(absentPosts)}</td><td></td></tr>
         <tr><td>По факту</td><td>${esc(factPosts)}</td><td></td></tr>
       </tbody></table>
     </div>`;
+    })();
 
     const block6Html = `
     <div class="block">
@@ -74,8 +95,8 @@ export function printCheckToPdf(check) {
         return `
     <div class="block">
       <div class="block-title">Блок ${b.num}: ${b.title} (балл: ${score})</div>
-      <table class="block-table"><thead><tr><th>Статус</th><th>Пункт</th><th>Вес</th></tr></thead>
-      <tbody>${blockRows(p, b.items)}</tbody></table>
+      <table class="block-table"><thead><tr><th>Статус</th><th>Пункт</th><th>Вес</th><th>Комментарий</th></tr></thead>
+      <tbody>${blockRows(p, b.items, comments)}</tbody></table>
     </div>`;
     }
 

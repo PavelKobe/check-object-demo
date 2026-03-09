@@ -25,12 +25,17 @@ function ViewBlock({ num, title, blockWeight, score, children }) {
     );
 }
 
-function ViewItem({ label, weight, checked }) {
+function ViewItem({ label, weight, checked, comment }) {
     return (
-        <div className={`check-item ${checked ? 'checked' : ''}`} style={{ cursor: 'default', opacity: checked ? 1 : 0.55 }}>
-            <span style={{ marginRight: 8 }}>{checked ? '✅' : '☐'}</span>
-            <span className="check-label">{label}</span>
-            <span className="check-weight">{weight}%</span>
+        <div className="view-item-wrap">
+            <div className={`check-item ${checked ? 'checked' : ''}`} style={{ cursor: 'default', opacity: checked ? 1 : 0.55 }}>
+                <span style={{ marginRight: 8 }}>{checked ? '✅' : '☐'}</span>
+                <span className="check-label">{label}</span>
+                <span className="check-weight">{weight}%</span>
+            </div>
+            {comment && (
+                <div className="view-comment">Комментарий: {comment}</div>
+            )}
         </div>
     );
 }
@@ -41,9 +46,8 @@ export default function CheckViewModal({ check, onClose }) {
     const p = check.payload || {};
     const d = check.details || {};
     const totalStaff = p.b2_total_staff ?? '—';
-    const absentPosts = p.b2_absent_posts ?? '—';
-    const factPosts = (typeof totalStaff === 'number' && typeof absentPosts === 'number')
-        ? totalStaff - absentPosts : '—';
+    const b2Checks = Array.isArray(p.b2_checks) ? p.b2_checks : [];
+    const comments = p.comments || {};
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -66,46 +70,67 @@ export default function CheckViewModal({ check, onClose }) {
                     {/* Block 1 */}
                     <ViewBlock num={1} title="Общие критерии безопасности" blockWeight={15} score={d.block_1}>
                         {BLOCK1_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
 
                     {/* Block 2 */}
                     <ViewBlock num={2} title="% присутствия сотрудников ЧОП" blockWeight={15} score={d.block_2}>
-                        <div className="numeric-row" style={{ pointerEvents: 'none' }}>
-                            <div className="view-stat">
-                                <span>👤 По штату:</span>
-                                <strong>{totalStaff}</strong>
-                            </div>
-                            <div className="view-stat">
-                                <span>❌ Отсутствует постов:</span>
-                                <strong>{absentPosts}</strong>
-                            </div>
-                            <div className="view-stat">
-                                <span>✅ По факту:</span>
-                                <strong>{factPosts}</strong>
-                            </div>
+                        <div className="view-stat">
+                            <span>👤 По штату:</span>
+                            <strong>{totalStaff}</strong>
                         </div>
+                        {b2Checks.length > 0 ? (
+                            <table className="view-b2-table">
+                                <thead>
+                                    <tr><th>Дата и время</th><th>Отсутствует постов</th><th>По факту</th></tr>
+                                </thead>
+                                <tbody>
+                                    {b2Checks.map((c, i) => {
+                                        const ap = typeof c.absent_posts === 'number' ? c.absent_posts : 0;
+                                        const fact = typeof totalStaff === 'number' ? totalStaff - ap : '—';
+                                        return (
+                                            <tr key={i}>
+                                                <td>{c.datetime || '—'}</td>
+                                                <td>{ap}</td>
+                                                <td>{fact}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="numeric-row" style={{ pointerEvents: 'none' }}>
+                                <div className="view-stat">
+                                    <span>❌ Отсутствует постов:</span>
+                                    <strong>{p.b2_absent_posts ?? '—'}</strong>
+                                </div>
+                                <div className="view-stat">
+                                    <span>✅ По факту:</span>
+                                    <strong>{typeof totalStaff === 'number' && typeof p.b2_absent_posts === 'number' ? totalStaff - p.b2_absent_posts : '—'}</strong>
+                                </div>
+                            </div>
+                        )}
                     </ViewBlock>
 
                     {/* Block 3 */}
                     <ViewBlock num={3} title="КПП (входные группы)" blockWeight={15} score={d.block_3}>
                         {BLOCK3_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
 
                     {/* Block 4 */}
                     <ViewBlock num={4} title="Кассы" blockWeight={10} score={d.block_4}>
                         {BLOCK4_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
 
                     {/* Block 5 */}
                     <ViewBlock num={5} title="Инкасса" blockWeight={10} score={d.block_5}>
                         {BLOCK5_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
 
@@ -120,14 +145,14 @@ export default function CheckViewModal({ check, onClose }) {
                     {/* Block 7 */}
                     <ViewBlock num={7} title="ЧОП — Внешний вид" blockWeight={15} score={d.block_7}>
                         {BLOCK7_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
 
                     {/* Block 8 */}
                     <ViewBlock num={8} title="Мониторка" blockWeight={15} score={d.block_8}>
                         {BLOCK8_ITEMS.map(item => (
-                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} />
+                            <ViewItem key={item.key} label={item.label} weight={item.weight} checked={!!p[item.key]} comment={comments[item.key]} />
                         ))}
                     </ViewBlock>
                 </div>

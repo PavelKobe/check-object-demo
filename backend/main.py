@@ -78,7 +78,11 @@ class CheckPayload(BaseModel):
 
     # Block 2 — Staff attendance
     b2_total_staff: int = Field(1, ge=1)   # Штатная численность ЧОП
-    b2_absent_posts: int = Field(0, ge=0)  # Кол-во отсутствующих постов
+    b2_absent_posts: int = Field(0, ge=0)  # Кол-во отсутствующих постов (legacy, used when b2_checks empty)
+    b2_checks: list = Field(default_factory=list)  # [{datetime, absent_posts}, ...] — несколько проверок по времени
+
+    # Comments per criterion (b1_1, b3_2, etc.)
+    comments: dict = Field(default_factory=dict)
 
     # Block 3 — Entry groups / КПП (5 sub-items)
     b3_1: bool = False  # Реагирует на сработку рамок (30%)
@@ -128,20 +132,30 @@ def score_block1(p: CheckPayload) -> float:
     return sum(w for w, v in zip(weights, values) if v)  # 0-100
 
 
-def score_block2(p: CheckPayload) -> float:
-    """Block 2 — Staff attendance percentage.
-    Staff ≤5: 1 absent post = 0%
-    Staff ≥6: 1 absent post = 50%, 2+ = 0%
-    """
-    absent = min(p.b2_absent_posts, p.b2_total_staff)
+def _score_single_check(total_staff: int, absent: int) -> float:
+    """One check: absent=0→100%, staff≤5 & absent≥1→0%, staff≥6 & absent=1→50%, staff≥6 & absent≥2→0%"""
+    absent = min(absent, total_staff)
     if absent == 0:
         return 100.0
-    if p.b2_total_staff <= 5:
+    if total_staff <= 5:
         return 0.0
-    else:
-        if absent == 1:
-            return 50.0
-        return 0.0
+    return 50.0 if absent == 1 else 0.0
+
+
+def score_block2(p: CheckPayload) -> float:
+    """Block 2 — Staff attendance. If b2_checks non-empty: average of per-check scores; else legacy b2_absent_posts."""
+    checks = getattr(p, 'b2_checks', None) or []
+    if checks:
+        scores = []
+        for c in checks:
+            if isinstance(c, dict):
+                ap = c.get('absent_posts', 0)
+            else:
+                ap = getattr(c, 'absent_posts', 0)
+            scores.append(_score_single_check(p.b2_total_staff, int(ap) if ap is not None else 0))
+        return round(sum(scores) / len(scores), 2) if scores else 0.0
+    # Legacy
+    return _score_single_check(p.b2_total_staff, p.b2_absent_posts)
 
 
 def score_block3(p: CheckPayload) -> float:
