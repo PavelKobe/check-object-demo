@@ -4,6 +4,7 @@ import CheckHistory from './components/CheckHistory';
 import { fetchChecks } from './api';
 import logoStockmann from '../images/logo-stockmann.png';
 import kameraImg from '../images/камера.png';
+import securityGuardImg from '../images/Security_Guard.png';
 
 export default function App() {
   const [creds, setCreds] = useState(null);
@@ -132,15 +133,22 @@ export default function App() {
       </nav>
 
       {/* Content */}
-      <main className="main-content">
+      <main className={`main-content ${activeTab === 'form' ? 'main-content-with-guard' : ''}`}>
         {activeTab === 'form' && (
-          <CheckForm
-            creds={creds}
-            onResult={handleResult}
-            initialData={editCheck?.payload}
-            editCheckId={editCheck?.id}
-            onCancelEdit={handleCancelEdit}
-          />
+          <>
+            <div className="security-guard-column">
+              <img src={securityGuardImg} alt="" className="security-guard-img" />
+            </div>
+            <div className="main-content-form">
+              <CheckForm
+                creds={creds}
+                onResult={handleResult}
+                initialData={editCheck?.payload}
+                editCheckId={editCheck?.id}
+                onCancelEdit={handleCancelEdit}
+              />
+            </div>
+          </>
         )}
         {activeTab === 'history' && (
           <CheckHistory checks={checks} onEdit={handleEdit} />

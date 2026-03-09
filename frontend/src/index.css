@@ -273,6 +273,37 @@ body {
   padding: 2rem 1.5rem 4rem;
 }
 
+.main-content-with-guard {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  max-width: 1050px;
+}
+
+.security-guard-column {
+  flex-shrink: 0;
+  width: 140px;
+  align-self: flex-start;
+}
+
+.security-guard-img {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+  animation: security-guard-spin 20s linear infinite;
+}
+
+@keyframes security-guard-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.main-content-form {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ─── Check Form ─────────────────────────────────────────────────────── */
 .store-field {
   margin-bottom: 1.5rem;
