@@ -277,26 +277,21 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 1.5rem;
-  max-width: 1050px;
+  max-width: 1200px;
 }
 
 .security-guard-column {
   flex-shrink: 0;
-  width: 140px;
+  width: 280px;
   align-self: flex-start;
 }
 
 .security-guard-img {
   width: 100%;
   height: auto;
-  max-height: 200px;
+  max-height: 400px;
   object-fit: contain;
-  animation: security-guard-spin 20s linear infinite;
-}
-
-@keyframes security-guard-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  animation: none;
 }
 
 .main-content-form {
