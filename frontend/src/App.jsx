@@ -138,6 +138,11 @@ export default function App() {
           <>
             <div className="security-guard-column">
               <img src={securityGuardImg} alt="" className="security-guard-img" />
+              <div className="guard-speech-bubble">
+                <p>Это демонстрационная версия системы проверки и оценки объектов. Все данные, которые вы вводите, сохраняются временно — только на время активной сессии сервера.</p>
+                <p><strong>⚠️ Важно:</strong> при неактивности более 15 минут сервер автоматически засыпает, и все данные удаляются.</p>
+                <p>Для постоянного хранения результатов требуется полноценное развёртывание с подключённой базой данных.</p>
+              </div>
             </div>
             <div className="main-content-form">
               <CheckForm

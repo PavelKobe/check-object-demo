@@ -293,6 +293,45 @@ body {
   object-fit: contain;
 }
 
+.guard-speech-bubble {
+  position: relative;
+  background: #fff;
+  border: 2px solid #333;
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #333;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.guard-speech-bubble::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 40px;
+  border: 10px solid transparent;
+  border-bottom-color: #333;
+}
+
+.guard-speech-bubble::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 44px;
+  border: 8px solid transparent;
+  border-bottom-color: #fff;
+}
+
+.guard-speech-bubble p {
+  margin: 0 0 0.5rem 0;
+}
+
+.guard-speech-bubble p:last-child {
+  margin-bottom: 0;
+}
+
 .main-content-form {
   flex: 1;
   min-width: 0;
