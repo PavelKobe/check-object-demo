@@ -291,7 +291,14 @@ body {
   height: auto;
   max-height: 400px;
   object-fit: contain;
-  animation: none;
+  animation: guard-walk 0.8s ease-in-out infinite;
+}
+
+@keyframes guard-walk {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-6px) translateX(2px); }
+  50% { transform: translateY(0) translateX(0); }
+  75% { transform: translateY(-4px) translateX(-2px); }
 }
 
 .main-content-form {
